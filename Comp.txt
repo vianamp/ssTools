@@ -1,0 +1,7 @@
+Static Version
+
+g++ ssTIFF2VTK.cpp -o ssTIFF2VTK libvtkCommonDataModel-6.2.a libvtkCommonCore-6.2.a libvtkIOLegacy-6.2.a libvtkCommonExecutionModel-6.2.a libvtkIOCore-6.2.a libvtkIOImage-6.2.a libvtkCommonSystem-6.2.a libvtksys-6.2.a libvtkImagingStencil-6.2.a libvtkCommonMisc-6.2.a libvtkCommonTransforms-6.2.a libvtkCommonMath-6.2.a libvtktiff-6.2.a libvtkjpeg-6.2.a libvtkzlib-6.2.a -I/usr/local/include/vtk-6.2/
+
+Dynamic version
+
+g++ ssTIFF2VTK.cpp -o ssTIFF2VTK -lvtkCommonDataModel-6.2 -lvtkCommonCore-6.2 -lvtkIOLegacy-6.2 -lvtkCommonExecutionModel-6.2 -lvtkIOCore-6.2 -lvtkIOImage-6.2 -I/usr/local/include/vtk-6.2/
