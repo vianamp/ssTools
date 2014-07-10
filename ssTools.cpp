@@ -1,40 +1,3 @@
-// ==============================================================
-// ssTIFF2VTK: Simple tool to convert both 8-bit and 16-bit TIFF
-// files into VTK ImageData files.
-// Developed by Matheus P. Viana - vianamp@gmail.com - 2014.05.29
-// Susanne Rafelski Lab, University of California Irvine
-// --------------------------------------------------------------
-// How to Use:
-// -----------
-// 1. To convert a multi-paged TIFF file named Cell140502.tif
-// 
-// -Command-
-// ./ssTIFF2VTK -prefix Cell140502 -save ImageData.vtk
-//
-// where:
-// -prefix indicates the name prefix of the TIFF file
-// -save   indicates the save that must be used to save the
-//         VTK file. If no name is provided, the name
-//         ImageData_Original.vtk will be used.
-//
-// 2. To convert a TIFF image sequence composed by the files
-//    im00.tif, im01.tif, im03.tif, ..., im29.tif
-//
-// -Command-
-// ./ssTIFF2VTK -prefix im -n 30 -save ImageData.vtk
-//
-// where:
-// -prefix indicates the name prefix of the TIFF file
-// -n      indicates the number of images in the sequence. In
-//         this case, we have 30 images (from 0 to 29).
-//         NOTE: The index if the first image in the sequence
-//         must start with zero.
-// -save   indicates the save that must be used to save the
-//         VTK file. If no name is provided, the name
-//         ImageData_Original.vtk will be used.
-//
-// ==============================================================
-
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -43,29 +6,17 @@
 #include <vtkDataArray.h>
 #include <vtkImageData.h>
 #include <vtkTIFFReader.h>
+#include <vtkTIFFWriter.h>
 #include <vtkSmartPointer.h>
 #include <vtkStructuredPoints.h>
 #include <vtkUnsignedCharArray.h>
 #include <vtkUnsignedShortArray.h>
 #include <vtkStructuredPointsWriter.h>
+#include <vtkStructuredPointsReader.h>
 
-int main(int argc, char *argv[]) {     
-    
-    int i;
-    int _nfiles = 1;
-    char _prefix[64];
-    char _savenm[64];
-    sprintf(_prefix,"im");
-    sprintf(_savenm,"ImageData_Original.vtk");
+void TIFF2VTK(const char _prefix[], int _nfiles) {
 
-    for (i = 0; i < argc; i++) {
-        if (!strcmp(argv[i],"-prefix")) {
-            sprintf(_prefix,"%s",argv[i+1]);
-        }
-        if (!strcmp(argv[i],"-n")) {
-            _nfiles = atoi(argv[i+1]);
-        }
-    }
+    char FileName[256];
 
     // Not multi-paged TIFF file
     vtkSmartPointer<vtkTIFFReader> TIFFReader = vtkSmartPointer<vtkTIFFReader>::New();
@@ -78,10 +29,12 @@ int main(int argc, char *argv[]) {
     // Multi-paged TIFF file
     } else {
         printf("Running multi-paged mode\n");
-        sprintf(_prefix,"%s.tif",_prefix);
-        TIFFReader -> SetFileName(_prefix);
+        sprintf(FileName,"%s.tif",_prefix);
+        TIFFReader -> SetFileName(FileName);
     }
     TIFFReader -> Update();
+
+    sprintf(FileName,"%s.vtk",_prefix);
 
     vtkImageData *Image = TIFFReader -> GetOutput();
     
@@ -89,13 +42,9 @@ int main(int argc, char *argv[]) {
     if (Image -> GetScalarType() == VTK_UNSIGNED_CHAR) {
 
         vtkSmartPointer<vtkStructuredPointsWriter> Writer = vtkSmartPointer<vtkStructuredPointsWriter>::New();
-        Writer -> SetFileName(_savenm);
+        Writer -> SetFileName(FileName);
         Writer -> SetFileType(VTK_BINARY);
-        #if (VTK_MAJOR_VERSION==5)
-            Writer -> SetInput(TIFFReader->GetOutput());
-        #else
-            Writer -> SetInputData(TIFFReader->GetOutput());
-        #endif
+        Writer -> SetInputData(TIFFReader->GetOutput());
         Writer -> Write();
 
     // 16-Bit images
@@ -134,13 +83,9 @@ int main(int argc, char *argv[]) {
 
         // Saving VTK file
         vtkSmartPointer<vtkStructuredPointsWriter> Writer = vtkSmartPointer<vtkStructuredPointsWriter>::New();
-        Writer -> SetFileName(_savenm);
+        Writer -> SetFileName(FileName);
         Writer -> SetFileType(VTK_BINARY);
-        #if (VTK_MAJOR_VERSION==5)
-            Writer -> SetInput(Image8);
-        #else
-            Writer -> SetInputData(Image8);
-        #endif
+        Writer -> SetInputData(Image8);
         Writer -> Write();
 
     } else {
@@ -148,6 +93,51 @@ int main(int argc, char *argv[]) {
         printf("Bit Depth Not Supported.\n");
 
     }
+
+}
+
+void VTK2TIFFSeq(const char _prefix[]) {
+    char FileName[256];
+    sprintf(FileName,"%s.vtk",_prefix);
+
+    vtkSmartPointer<vtkStructuredPointsReader> VTKReader = vtkSmartPointer<vtkStructuredPointsReader>::New();
+    VTKReader -> SetFileName(FileName);
+    VTKReader -> Update();
+
+    vtkSmartPointer<vtkTIFFWriter> TIFFWriter = vtkSmartPointer<vtkTIFFWriter>::New();
+    TIFFWriter -> SetInputData(VTKReader -> GetOutput());
+    TIFFWriter -> SetFilePattern("%s%04d.tif");
+    TIFFWriter -> SetFilePrefix(_prefix);
+    TIFFWriter -> Write();
+}
+
+int main(int argc, char *argv[]) {     
+    
+    int i, mode;
+    int _nfiles = 1;
+    char _prefix[256];
+    sprintf(_prefix,"im");
+
+    for (i = 0; i < argc; i++) {
+        if (!strcmp(argv[i],"-vtk2tiffseq")) {
+            mode = 1;
+        }
+        if (!strcmp(argv[i],"-tiff2vtk")) {
+            mode = 2;
+        }
+        if (!strcmp(argv[i],"-prefix")) {
+            sprintf(_prefix,"%s",argv[i+1]);
+        }
+        if (!strcmp(argv[i],"-n")) {
+            _nfiles = atoi(argv[i+1]);
+        }
+    }
+
+    if (mode==1)
+        VTK2TIFFSeq(_prefix);
+
+    if (mode==2)
+        TIFF2VTK(_prefix,_nfiles);
 
     return 0;
 }
